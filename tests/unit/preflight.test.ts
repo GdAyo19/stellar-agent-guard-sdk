@@ -15,6 +15,7 @@ import {
   type PreFlightDecision,
 } from "../../src/preflight.ts";
 import { RpcTimeoutError } from "../../src/invoke.ts";
+import { ContractResponseError } from "../../src/errors.ts";
 import { GuardBlockedError } from "../../src/reasons.ts";
 import type { PolicyConfig } from "../../src/policy.ts";
 import type { ContractCall } from "../../src/tx.ts";
@@ -570,9 +571,64 @@ describe("throw vs verdict contract asymmetry", () => {
 });
 
 /* -------------------------------------------------------------------------- */
-/*             Unit tests for opt-in pre-flight simulation cache              */
+/*             Pre-flight resource-fee handling (fail closed)                 */
 /* -------------------------------------------------------------------------- */
 
+/**
+ * A malformed resource fee must fail the way every other malformed contract
+ * response fails: with the SDK's typed `ContractResponseError`, naming the
+ * field and the stage, and with the verdict `undetermined` — never
+ * `admissible`, because an unpriceable simulation must not produce a budget
+ * decision.
+ */
+describe("pre-flight resource-fee handling", () => {
+  function serverWithFee(minResourceFee: unknown) {
+    return createMockServer({
+      enforcedSimulateResponse: {
+        minResourceFee,
+        result: { auth: [] },
+        transactionData: {
+          getReadOnly: () => [],
+          getReadWrite: () => [],
+        },
+      },
+    });
+  }
+
+  it("reports a missing, malformed, negative or out-of-range fee as undetermined", async () => {
+    for (const value of [undefined, null, "", "not-a-fee", "1.5", -1, 2n ** 64n]) {
+      const server = serverWithFee(value);
+      const interceptor = createTestInterceptor(server);
+
+      const decision = await interceptor.check(validTransferCall());
+
+      assert.equal(decision.kind, "undetermined");
+      assert.ok(
+        decision.error instanceof ContractResponseError,
+        `expected a ContractResponseError for ${String(value)}`,
+      );
+      assert.equal(decision.error.field, "minResourceFee");
+      assert.equal(decision.error.stage, "preflight");
+      assert.equal(decision.allowed, false);
+    }
+  });
+
+  it("accepts the fee in every representation the SDK may hand back", async () => {
+    for (const value of ["42", 42, 42n]) {
+      const server = serverWithFee(value);
+      const interceptor = createTestInterceptor(server);
+
+      const decision = await interceptor.check(validTransferCall());
+
+      assert.equal(decision.kind, "admissible");
+      assert.equal(decision.kind === "admissible" ? decision.estimatedResourceFee : undefined, 42n);
+    }
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/*             Unit tests for opt-in pre-flight simulation cache              */
+/* -------------------------------------------------------------------------- */
 const CONTRACT = unsafeContractAddress("CAPADGEK457RHKN4RYVUMDJTFHDSG7R5HREQONKLYK7MFKC5WFENPP44");
 const OTHER_CONTRACT = unsafeContractAddress(Address.contract(Buffer.alloc(32)).toString());
 const NETWORK_PASSPHRASE = "Test SDF Network ; September 2015";
