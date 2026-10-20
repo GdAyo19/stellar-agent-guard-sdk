@@ -998,13 +998,13 @@ symbols). Neither can reach a verdict.
 npm run typecheck                        # clean
 npm run check:strict-ratchet             # ok
 npm run lint                             # clean
-npm test                                 # 950 tests, 949 pass, 0 fail, 1 skipped
-npm run test:coverage:floor              # ok — invoke.ts 95.95% lines / 87.9% branch / 95.83% funcs
+npm test                                 # 994 tests, 993 pass, 0 fail, 1 skipped
+npm run test:coverage:floor              # ok — invoke.ts 95.95% lines / 87.87% branch / 95.83% funcs
 npm run build                            # clean
-npm run test:smoke                       # 165 named exports resolve via the ESM export map
+npm run test:smoke                       # 172 named exports resolve via the ESM export map
 npm run test:exports                     # every declared subpath resolves; undeclared paths refused
 npm run check:bundle-size                # within budget
-node --import tsx scripts/check-doc-links.ts   # 36 files, 200 links, no broken links or anchors
+node --import tsx scripts/check-doc-links.ts   # 38 files, 217 links, no broken links or anchors
 ```
 
 The unit suite covers the new behaviour with no network and no credentials:
