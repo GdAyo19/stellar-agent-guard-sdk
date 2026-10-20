@@ -641,7 +641,9 @@ export class PreFlightInterceptor {
       // back an admissible verdict carrying a fabricated or silently zero fee.
       let estimatedResourceFee: bigint;
       try {
-        estimatedResourceFee = parseSimulationResourceFee(outcome.simulation.minResourceFee);
+        estimatedResourceFee = parseSimulationResourceFee(outcome.simulation.minResourceFee, {
+          stage: "preflight",
+        });
       } catch (cause) {
         decision = {
           allowed: false,
